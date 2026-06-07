@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portfol / 포트폴</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;letter-spacing:-0.02em}
+:root{
+  --bg:#F7F5F0;--surface:#FFFFFF;--surface2:#F0EDE6;
+  --border:rgba(0,0,0,0.10);--border-strong:rgba(0,0,0,0.18);
+  --text:#1A1815;--text2:#5C5752;--text3:#9C9890;
+  --accent-warm:#B86A2E;--accent-green:#2E6B4A;--accent-blue:#2450A4;
+  --pill-r:999px;--card-r:20px;--input-r:14px;
+  --sans:'DM Sans',sans-serif;--serif:'DM Serif Display',serif;--ko:'Noto Sans KR',sans-serif;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#141210;--surface:#1E1C19;--surface2:#28251F;
+  --border:rgba(255,255,255,0.10);--border-strong:rgba(255,255,255,0.18);
+  --text:#F0EDE6;--text2:#A09B93;--text3:#6B6660;
+  --accent-warm:#E0904E;--accent-green:#4DA87A;--accent-blue:#6B9EE8;
+}}
+html{font-size:16px}
+body{font-family:var(--ko);background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6}
+body.en{font-family:var(--sans)}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:0.5px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+.topbar-left{display:flex;align-items:center;gap:16px}
+.logo{font-family:var(--serif);font-size:20px}
+.lang-toggle{display:flex;align-items:center;background:var(--surface2);border-radius:var(--pill-r);border:0.5px solid var(--border);padding:3px;gap:2px}
+.lang-btn{font-size:12px;font-weight:500;padding:5px 14px;border-radius:var(--pill-r);border:none;background:transparent;color:var(--text2);cursor:pointer;transition:background .15s,color .15s;font-family:inherit}
+.lang-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.rate-pill{font-size:11px;color:var(--text2);background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--pill-r);padding:5px 12px;display:flex;align-items:center;gap:6px}
+.rate-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-green);flex-shrink:0}
+.btn-pill{font-size:13px;font-weight:500;padding:8px 18px;border-radius:var(--pill-r);border:0.5px solid var(--border-strong);background:transparent;color:var(--text);cursor:pointer;transition:background .15s,transform .1s;display:flex;align-items:center;gap:7px;white-space:nowrap;font-family:inherit}
+.btn-pill:hover{background:var(--surface2)}
+.btn-pill:active{transform:scale(.97)}
+.btn-pill.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn-pill.primary:hover{opacity:.88}
+.btn-pill svg{width:15px;height:15px;flex-shrink:0}
+
+/* layout */
+.main{max-width:1100px;margin:0 auto;padding:40px 24px 80px}
+.hero{margin-bottom:48px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.hero-text h1{font-family:var(--serif);font-size:clamp(26px,5vw,42px);line-height:1.15;font-weight:400;margin-bottom:10px}
+body.ko .hero-text h1{font-family:var(--ko);font-weight:500;letter-spacing:-0.02em;font-size:clamp(22px,4vw,36px)}
+.hero-text p{color:var(--text2);font-size:15px;max-width:500px}
+.layout-cols{display:grid;grid-template-columns:360px 1fr;gap:28px;align-items:start}
+@media(max-width:820px){.layout-cols{grid-template-columns:1fr}}
+
+/* cards */
+.card{background:var(--surface);border-radius:var(--card-r);border:0.5px solid var(--border);overflow:hidden}
+.card-head{padding:18px 22px 14px;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-head h2{font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text2)}
+.card-body{padding:20px 22px}
+
+/* form */
+.field{margin-bottom:20px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:7px;letter-spacing:.04em;text-transform:uppercase}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input[type="number"],input[type="date"],select{width:100%;padding:11px 14px;font-size:15px;font-family:inherit;background:var(--surface2);color:var(--text);border:0.5px solid var(--border-strong);border-radius:var(--input-r);outline:none;appearance:none;-webkit-appearance:none;transition:border-color .15s,box-shadow .15s}
+input[type="number"]:focus,input[type="date"]:focus,select:focus{border-color:var(--text);box-shadow:0 0 0 3px rgba(128,128,128,.12)}
+.currency-input{position:relative}
+.currency-input .cur-prefix{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text2);pointer-events:none}
+.currency-input input{padding-left:28px}
+.hint{font-size:12px;color:var(--text3);margin-top:5px}
+
+/* slider */
+.slider-field{margin-bottom:20px}
+.slider-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.slider-label .sl-name{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+.slider-label .sl-val{font-size:14px;font-weight:500}
+input[type="range"]{width:100%;-webkit-appearance:none;appearance:none;height:4px;background:var(--border-strong);border-radius:2px;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--text);border:2px solid var(--surface);box-shadow:0 1px 4px rgba(0,0,0,.2)}
+
+/* seg */
+.seg{display:flex;background:var(--surface2);border-radius:var(--pill-r);padding:3px;gap:2px}
+.seg-btn{flex:1;font-size:13px;font-weight:500;text-align:center;padding:7px 8px;border-radius:var(--pill-r);border:none;background:transparent;color:var(--text2);cursor:pointer;transition:background .15s,color .15s;font-family:inherit}
+.seg-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+/* results */
+.result-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px}
+.metric-card{background:var(--surface2);border-radius:16px;padding:16px 18px;border:0.5px solid var(--border)}
+.metric-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.metric-val{font-size:22px;font-weight:600;line-height:1.1}
+.metric-eq{font-size:11px;color:var(--text3);margin-top:3px;letter-spacing:.01em}
+.metric-sub{font-size:11px;color:var(--text2);margin-top:4px}
+.metric-card.warm .metric-val{color:var(--accent-warm)}
+.metric-card.green .metric-val{color:var(--accent-green)}
+.metric-card.blue .metric-val{color:var(--accent-blue)}
+
+/* charts */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}
+@media(max-width:700px){.charts-grid{grid-template-columns:1fr}}
+.chart-box{background:var(--surface);border-radius:var(--card-r);border:0.5px solid var(--border);padding:20px 20px 16px}
+.chart-box h3{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:16px}
+.chart-wrap{position:relative;height:220px}
+
+/* benchmark */
+.bench-item{margin-bottom:16px}
+.bench-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.bench-name{font-size:13px;font-weight:500}
+.bench-amt{font-size:13px;font-weight:600}
+.bench-eq{font-size:11px;color:var(--text3);margin-left:5px}
+.bench-bar-bg{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.bench-bar-fill{height:100%;border-radius:4px;background:var(--accent-warm);transition:width .6s cubic-bezier(.4,0,.2,1)}
+.bench-bar-fill.you{background:var(--text)}
+.source-note{font-size:11px;color:var(--text3);margin-top:20px;padding-top:14px;border-top:0.5px solid var(--border);line-height:1.5}
+.source-note a{color:var(--text2)}
+
+/* plans */
+.plan-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:0.5px solid var(--border)}
+.plan-item:last-child{border-bottom:none}
+.plan-name{font-size:14px;font-weight:500}
+.plan-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.plan-btns{display:flex;gap:8px}
+.icon-btn{width:34px;height:34px;border-radius:var(--pill-r);border:0.5px solid var(--border);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:background .15s,color .15s}
+.icon-btn:hover{background:var(--surface2);color:var(--text)}
+.icon-btn svg{width:16px;height:16px}
+
+/* modal */
+.modal-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--card-r);padding:28px 28px 24px;width:340px;border:0.5px solid var(--border-strong)}
+.modal h3{font-family:var(--serif);font-size:22px;font-weight:400;margin-bottom:16px}
+.modal-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+.modal input[type="text"]{width:100%;padding:11px 14px;font-size:15px;font-family:inherit;background:var(--surface2);color:var(--text);border:0.5px solid var(--border-strong);border-radius:var(--input-r);outline:none}
+
+/* auth */
+.auth-prompt{text-align:center;padding:24px 0;display:flex;flex-direction:column;align-items:center;gap:12px}
+.auth-prompt p{font-size:14px;color:var(--text2);max-width:260px}
+
+/* timeline */
+.timeline{display:flex;margin-bottom:24px;overflow-x:auto;padding-bottom:4px}
+.tl-step{flex:1;min-width:90px;padding:14px 12px;border:0.5px solid var(--border);border-right:none;background:var(--surface);text-align:center}
+.tl-step:first-child{border-radius:16px 0 0 16px}
+.tl-step:last-child{border-radius:0 16px 16px 0;border-right:0.5px solid var(--border)}
+.tl-step.active{background:var(--text)}
+.tl-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:5px}
+.tl-val{font-size:16px;font-weight:600;line-height:1.2}
+.tl-eq{font-size:10px;color:var(--text3);margin-top:2px}
+.tl-year{font-size:11px;color:var(--text2);margin-top:3px}
+.tl-step.active .tl-label,.tl-step.active .tl-val,.tl-step.active .tl-eq,.tl-step.active .tl-year{color:rgba(255,255,255,.7)}
+.tl-step.active .tl-val{color:#fff}
+
+/* alloc table */
+.alloc-table{width:100%;border-collapse:collapse;font-size:14px}
+.alloc-table th{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 12px;text-align:left;border-bottom:0.5px solid var(--border)}
+.alloc-table td{padding:10px 12px;border-bottom:0.5px solid var(--border)}
+.alloc-table tr:last-child td{border-bottom:none}
+.alloc-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:8px;flex-shrink:0}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:12px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
+.legend-swatch{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+
+/* utils */
+.mt16{margin-top:16px}.mt24{margin-top:24px}
+.divider{height:0.5px;background:var(--border);margin:20px 0}
+</style>
+</head>
+<body class="ko">
+
+<!-- topbar -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo" id="el-logo">Portfol</div>
+    <div class="lang-toggle" role="group" aria-label="Language">
+      <button class="lang-btn" id="btn-ko" onclick="setLang('ko')">한국어</button>
+      <button class="lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="rate-pill">
+      <span class="rate-dot"></span>
+      <span id="el-rate">USD/KRW —</span>
+    </div>
+    <button class="btn-pill" id="auth-btn" onclick="handleAuth()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span id="el-auth-label">로그인</span>
+    </button>
+  </div>
+</header>
+
+<main class="main">
+  <div class="hero">
+    <div class="hero-text">
+      <h1 id="el-hero-h1">원하는 삶을 목표로,<br>역방향으로 계획하세요.</h1>
+      <p id="el-hero-p">목표 은퇴 소득을 입력하면, 현재 필요한 포트폴리오를 미국 실제 가계 데이터와 비교해 계산합니다.</p>
+    </div>
+  </div>
+
+  <div class="layout-cols">
+    <!-- left: inputs -->
+    <div>
+      <div class="card" style="margin-bottom:20px">
+        <div class="card-head"><h2 id="el-lbl-goal">목표 설정</h2></div>
+        <div class="card-body">
+
+          <div class="field">
+            <label id="el-lbl-income">월 목표 소득</label>
+            <div class="currency-input">
+              <span class="cur-prefix">₩</span>
+              <input type="number" id="inp-income" value="6000000" min="100000" max="500000000" step="100000" oninput="debounceCalc()">
+            </div>
+            <div class="hint" id="el-hint-income">투자 소득 + 배당금 포함</div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label id="el-lbl-target">목표 날짜</label>
+              <input type="date" id="inp-target" oninput="debounceCalc()">
+            </div>
+            <div class="field">
+              <label id="el-lbl-start">시작 날짜</label>
+              <input type="date" id="inp-start" oninput="debounceCalc()">
+            </div>
+          </div>
+
+          <div class="field">
+            <label id="el-lbl-pension">예상 연금 (월)</label>
+            <div class="currency-input">
+              <span class="cur-prefix">₩</span>
+              <input type="number" id="inp-pension" value="600000" min="0" step="100000" oninput="debounceCalc()">
+            </div>
+            <div class="hint" id="el-hint-pension">국민연금, 사회보장 등</div>
+          </div>
+
+          <div class="field">
+            <label id="el-lbl-existing">현재 포트폴리오 가치</label>
+            <div class="currency-input">
+              <span class="cur-prefix">₩</span>
+              <input type="number" id="inp-existing" value="100000000" min="0" step="1000000" oninput="debounceCalc()">
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="slider-field">
+            <div class="slider-label">
+              <span class="sl-name" id="el-lbl-return">연 예상 수익률</span>
+              <span class="sl-val" id="val-return">7.0%</span>
+            </div>
+            <input type="range" id="sl-return" min="2" max="14" value="7" step="0.5" oninput="updateSliders();debounceCalc()">
+          </div>
+
+          <div class="slider-field">
+            <div class="slider-label">
+              <span class="sl-name" id="el-lbl-inflation">인플레이션 가정</span>
+              <span class="sl-val" id="val-inflation">3.0%</span>
+            </div>
+            <input type="range" id="sl-inflation" min="1" max="8" value="3" step="0.5" oninput="updateSliders();debounceCalc()">
+          </div>
+
+          <div class="slider-field">
+            <div class="slider-label">
+              <span class="sl-name" id="el-lbl-withdrawal">인출률</span>
+              <span class="sl-val" id="val-withdrawal">4.00%</span>
+            </div>
+            <input type="range" id="sl-withdrawal" min="2" max="8" value="4" step="0.25" oninput="updateSliders();debounceCalc()">
+            <div class="hint" id="el-hint-withdrawal">"4% 규칙" — 30년 은퇴의 역사적 안전 인출률</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- saved plans -->
+      <div class="card">
+        <div class="card-head">
+          <h2 id="el-lbl-saved">저장된 플랜</h2>
+          <button class="btn-pill" onclick="openSaveModal()" style="padding:6px 14px;font-size:12px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            <span id="el-lbl-save-btn">저장</span>
+          </button>
+        </div>
+        <div class="card-body">
+          <div class="auth-prompt" id="auth-prompt">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <p id="el-auth-prompt-text">Google 로그인으로 여러 플랜을 저장하고 비교하세요.</p>
+            <button class="btn-pill primary" onclick="handleAuth()">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              <span id="el-auth-prompt-btn">로그인</span>
+            </button>
+          </div>
+          <div id="plans-list" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- right: results -->
+    <div id="results-panel">
+      <div class="timeline" id="timeline" role="list"></div>
+
+      <div class="result-grid">
+        <div class="metric-card warm">
+          <div class="metric-label" id="el-lbl-m1">필요 포트폴리오</div>
+          <div class="metric-val" id="val-m1">—</div>
+          <div class="metric-eq" id="eq-m1"></div>
+          <div class="metric-sub" id="el-sub-m1">목표 시점 기준</div>
+        </div>
+        <div class="metric-card green">
+          <div class="metric-label" id="el-lbl-m2">월 필요 저축액</div>
+          <div class="metric-val" id="val-m2">—</div>
+          <div class="metric-eq" id="eq-m2"></div>
+          <div class="metric-sub" id="el-sub-m2">목표 달성을 위해</div>
+        </div>
+        <div class="metric-card blue">
+          <div class="metric-label" id="el-lbl-m3">소득 충족률</div>
+          <div class="metric-val" id="val-m3">—</div>
+          <div class="metric-eq" id="eq-m3"></div>
+          <div class="metric-sub" id="el-sub-m3">포트폴리오 + 연금</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label" id="el-lbl-m4">목표까지 기간</div>
+          <div class="metric-val" id="val-m4">—</div>
+          <div class="metric-eq" id="eq-m4"></div>
+          <div class="metric-sub" id="el-sub-m4">저축 기간</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-box">
+          <h3 id="el-lbl-chart-alloc">권장 자산 배분</h3>
+          <div class="legend" id="pie-legend"></div>
+          <div class="chart-wrap"><canvas id="chart-pie" role="img" aria-label="Donut chart of portfolio allocation">Portfolio allocation</canvas></div>
+        </div>
+        <div class="chart-box">
+          <h3 id="el-lbl-chart-growth">포트폴리오 성장 전망</h3>
+          <div class="chart-wrap"><canvas id="chart-line" role="img" aria-label="Portfolio growth over time">Growth chart</canvas></div>
+        </div>
+      </div>
+
+      <div class="card mt16">
+        <div class="card-head"><h2 id="el-lbl-breakdown">자산 배분 상세</h2></div>
+        <div class="card-body" style="padding:0">
+          <table class="alloc-table">
+            <thead><tr>
+              <th id="el-th-asset">자산군</th>
+              <th id="el-th-pct">비중</th>
+              <th id="el-th-amount">예상 금액</th>
+              <th id="el-th-role">역할</th>
+            </tr></thead>
+            <tbody id="alloc-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card mt16">
+        <div class="card-head"><h2 id="el-lbl-bench">실제 미국 가계 포트폴리오 비교</h2></div>
+        <div class="card-body">
+          <div id="bench-container"></div>
+          <div class="source-note">
+            <span id="el-source-note">데이터 출처: <strong>연방준비제도 소비자금융조사(SCF) 2022</strong> (<a href="https://www.federalreserve.gov/econres/scfindex.htm" target="_blank">federalreserve.gov</a>); <strong>Vanguard How America Saves 2023</strong>; <strong>Fidelity Retirement Savings Assessment 2023</strong>. 연령대별 중간값 기준.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- save modal -->
+<div class="modal-overlay" id="save-modal">
+  <div class="modal">
+    <h3 id="el-modal-title">플랜 저장</h3>
+    <div class="field" style="margin-bottom:0">
+      <label id="el-modal-lbl">플랜 이름</label>
+      <input type="text" id="plan-name-input" placeholder="예: 플랜 A — 60세 은퇴">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-pill" onclick="closeModal()"><span id="el-modal-cancel">취소</span></button>
+      <button class="btn-pill primary" onclick="savePlan()"><span id="el-modal-save">저장</span></button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Firebase ──────────────────────────────────────────────────────────────
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyDwbULXvba1bo9FExCmoGcnLSFfIzt4IKc",
+    authDomain: "portfol-cf2b4.firebaseapp.com",
+    projectId: "portfol-cf2b4",
+    storageBucket: "portfol-cf2b4.firebasestorage.app",
+    messagingSenderId: "657076451304",
+    appId: "1:657076451304:web:a489cd360cc7915d0fd65d"
+  };
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ── State ─────────────────────────────────────────────────────────────────
+let lang = 'ko';
+let usdKrw = 1350;
+let currentUser = null;
+let savedPlans = [];
+let calcTimer = null;
+let pieChart = null, lineChart = null;
+
+// ── Translations ──────────────────────────────────────────────────────────
+const T = {
+  ko: {
+    logo:'Portfol', authIn:'로그인', authOut:'로그아웃',
+    heroH1:'원하는 삶을 목표로,<br>역방향으로 계획하세요.',
+    heroP:'목표 은퇴 소득을 입력하면, 현재 필요한 포트폴리오를 미국 실제 가계 데이터와 비교해 계산합니다.',
+    lblGoal:'목표 설정', lblIncome:'월 목표 소득', hintIncome:'투자 소득 + 배당금 포함',
+    lblTarget:'목표 날짜', lblStart:'시작 날짜',
+    lblPension:'예상 연금 (월)', hintPension:'국민연금, 사회보장 등',
+    lblExisting:'현재 포트폴리오 가치',
+    lblReturn:'연 예상 수익률', lblInflation:'인플레이션 가정', lblWithdrawal:'인출률',
+    hintWithdrawal:'"4% 규칙" — 30년 은퇴의 역사적 안전 인출률',
+    lblSaved:'저장된 플랜', lblSaveBtn:'저장',
+    authPromptText:'Google 로그인으로 여러 플랜을 저장하고 비교하세요.',
+    authPromptBtn:'로그인',
+    lblM1:'필요 포트폴리오', subM1:'목표 시점 기준',
+    lblM2:'월 필요 저축액', subM2:'목표 달성을 위해',
+    lblM3:'소득 충족률', subM3:'포트폴리오 + 연금',
+    lblM4:'목표까지 기간', subM4:'저축 기간',
+    lblChartAlloc:'권장 자산 배분', lblChartGrowth:'포트폴리오 성장 전망',
+    lblBreakdown:'자산 배분 상세',
+    thAsset:'자산군', thPct:'비중', thAmount:'예상 금액', thRole:'역할',
+    lblBench:'실제 미국 가계 포트폴리오 비교',
+    modalTitle:'플랜 저장', modalLbl:'플랜 이름', modalCancel:'취소', modalSave:'저장',
+    tlToday:'현재', tlMid:'중간', tlGoal:'목표',
+    benchYou:'내 목표', benchPeer:'동년배 중간값',
+    sourceNote:'데이터 출처: <strong>연방준비제도 소비자금융조사(SCF) 2022</strong> (<a href="https://www.federalreserve.gov/econres/scfindex.htm" target="_blank">federalreserve.gov</a>); <strong>Vanguard How America Saves 2023</strong>; <strong>Fidelity Retirement Savings Assessment 2023</strong>. 연령대별 중간값 기준.',
+    noPlans:'저장된 플랜이 없습니다.',
+    yearsUnit:'년',
+    allocNames:['미국 주식','해외 주식','채권','리츠','현금성 자산'],
+    allocRoles:['성장 엔진','분산 투자','안정성 & 소득','인플레이션 헤지','유동성 완충']
+  },
+  en: {
+    logo:'Portfol', authIn:'Sign in', authOut:'Sign out',
+    heroH1:'Work backwards<br>from the life you want.',
+    heroP:'Enter your target retirement income. We calculate what portfolio you need — benchmarked against real American household data.',
+    lblGoal:'Target Goal', lblIncome:'Monthly income target', hintIncome:'Includes investment income + dividends',
+    lblTarget:'Target date', lblStart:'Plan start date',
+    lblPension:'Expected pension / month', hintPension:'Social Security, 국민연금, etc.',
+    lblExisting:'Existing portfolio value',
+    lblReturn:'Expected annual return', lblInflation:'Inflation assumption', lblWithdrawal:'Withdrawal rate',
+    hintWithdrawal:'The "4% rule" is the historical safe rate for a 30yr retirement',
+    lblSaved:'Saved Plans', lblSaveBtn:'Save',
+    authPromptText:'Sign in with Google to save and compare multiple plans.',
+    authPromptBtn:'Sign in',
+    lblM1:'Portfolio needed', subM1:'At target date',
+    lblM2:'Monthly savings needed', subM2:'To reach goal',
+    lblM3:'Income covered', subM3:'Portfolio + pension',
+    lblM4:'Years to goal', subM4:'Saving period',
+    lblChartAlloc:'Recommended allocation', lblChartGrowth:'Portfolio growth projection',
+    lblBreakdown:'Allocation breakdown',
+    thAsset:'Asset class', thPct:'Allocation', thAmount:'Est. amount', thRole:'Role',
+    lblBench:'vs. Actual American Portfolios',
+    modalTitle:'Save plan', modalLbl:'Plan name', modalCancel:'Cancel', modalSave:'Save plan',
+    tlToday:'Today', tlMid:'Midpoint', tlGoal:'Goal',
+    benchYou:'Your goal', benchPeer:'Median peer',
+    sourceNote:'Sources: <strong>Federal Reserve Survey of Consumer Finances (SCF) 2022</strong> (<a href="https://www.federalreserve.gov/econres/scfindex.htm" target="_blank">federalreserve.gov</a>); <strong>Vanguard How America Saves 2023</strong>; <strong>Fidelity Retirement Savings Assessment 2023</strong>. Medians by age cohort.',
+    noPlans:'No saved plans yet.',
+    yearsUnit:' yrs',
+    allocNames:['US Stocks','Intl. Stocks','Bonds','REITs','Cash & equivalents'],
+    allocRoles:['Growth engine','Diversification','Stability & income','Inflation hedge','Liquidity buffer']
+  }
+};
+
+// ── i18n apply ────────────────────────────────────────────────────────────
+function applyTranslations() {
+  const t = T[lang];
+  document.documentElement.lang = lang;
+  document.body.className = lang === 'ko' ? 'ko' : 'en';
+  document.getElementById('btn-ko').classList.toggle('active', lang === 'ko');
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+
+  const map = {
+    'el-logo':t.logo, 'el-hero-h1':t.heroH1, 'el-hero-p':t.heroP,
+    'el-lbl-goal':t.lblGoal, 'el-lbl-income':t.lblIncome, 'el-hint-income':t.hintIncome,
+    'el-lbl-target':t.lblTarget, 'el-lbl-start':t.lblStart,
+    'el-lbl-pension':t.lblPension, 'el-hint-pension':t.hintPension,
+    'el-lbl-existing':t.lblExisting,
+    'el-lbl-return':t.lblReturn, 'el-lbl-inflation':t.lblInflation, 'el-lbl-withdrawal':t.lblWithdrawal,
+    'el-hint-withdrawal':t.hintWithdrawal,
+    'el-lbl-saved':t.lblSaved, 'el-lbl-save-btn':t.lblSaveBtn,
+    'el-auth-prompt-text':t.authPromptText, 'el-auth-prompt-btn':t.authPromptBtn,
+    'el-auth-label': currentUser ? t.authOut : t.authIn,
+    'el-lbl-m1':t.lblM1, 'el-sub-m1':t.subM1,
+    'el-lbl-m2':t.lblM2, 'el-sub-m2':t.subM2,
+    'el-lbl-m3':t.lblM3, 'el-sub-m3':t.subM3,
+    'el-lbl-m4':t.lblM4, 'el-sub-m4':t.subM4,
+    'el-lbl-chart-alloc':t.lblChartAlloc, 'el-lbl-chart-growth':t.lblChartGrowth,
+    'el-lbl-breakdown':t.lblBreakdown,
+    'el-th-asset':t.thAsset, 'el-th-pct':t.thPct, 'el-th-amount':t.thAmount, 'el-th-role':t.thRole,
+    'el-lbl-bench':t.lblBench,
+    'el-modal-title':t.modalTitle, 'el-modal-lbl':t.modalLbl,
+    'el-modal-cancel':t.modalCancel, 'el-modal-save':t.modalSave,
+    'el-source-note':t.sourceNote
+  };
+  for (const [id, html] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  }
+
+  // modal placeholder
+  const pn = document.getElementById('plan-name-input');
+  if (pn) pn.placeholder = lang === 'ko' ? '예: 플랜 A — 60세 은퇴' : 'e.g. Plan A — retire at 60';
+}
+
+function setLang(l) {
+  lang = l;
+  applyTranslations();
+  runCalculation();
+}
+
+// ── Money formatting ──────────────────────────────────────────────────────
+// Primary display: KRW. Secondary: USD equivalent in parentheses.
+function krwFromInput(val) {
+  // inputs are always in KRW
+  return val;
+}
+
+function fmtKrw(krw) {
+  const abs = Math.abs(krw);
+  if (abs >= 1e8) return '₩' + (krw/1e8).toFixed(1) + '억';
+  if (abs >= 1e4) return '₩' + Math.round(krw/1e4) + '만';
+  return '₩' + Math.round(krw).toLocaleString();
+}
+
+function fmtUsd(krw) {
+  const usd = krw / usdKrw;
+  if (Math.abs(usd) >= 1e6) return '$' + (usd/1e6).toFixed(2) + 'M';
+  if (Math.abs(usd) >= 1e3) return '$' + Math.round(usd/1e3) + 'K';
+  return '$' + Math.round(usd).toLocaleString();
+}
+
+// Returns primary string + secondary string
+function fmtDual(krw) {
+  return { primary: fmtKrw(krw), secondary: fmtUsd(krw) };
+}
+
+// ── Exchange rate ─────────────────────────────────────────────────────────
+async function fetchRate() {
+  try {
+    const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    const d = await r.json();
+    if (d?.rates?.KRW) {
+      usdKrw = d.rates.KRW;
+      document.getElementById('el-rate').textContent = `1 USD = ₩${Math.round(usdKrw).toLocaleString()}`;
+    }
+  } catch {
+    document.getElementById('el-rate').textContent = `1 USD ≈ ₩${Math.round(usdKrw).toLocaleString()}`;
+  }
+}
+
+// ── Sliders ───────────────────────────────────────────────────────────────
+function updateSliders() {
+  const ret = parseFloat(document.getElementById('sl-return').value);
+  const inf = parseFloat(document.getElementById('sl-inflation').value);
+  const wd  = parseFloat(document.getElementById('sl-withdrawal').value);
+  document.getElementById('val-return').textContent    = ret.toFixed(1) + '%';
+  document.getElementById('val-inflation').textContent = inf.toFixed(1) + '%';
+  document.getElementById('val-withdrawal').textContent= wd.toFixed(2) + '%';
+}
+
+// ── Debounce ──────────────────────────────────────────────────────────────
+function debounceCalc() {
+  clearTimeout(calcTimer);
+  calcTimer = setTimeout(runCalculation, 200);
+}
+
+// ── Core calc ─────────────────────────────────────────────────────────────
+function getInputs() {
+  const now        = new Date();
+  const targetDate = new Date(document.getElementById('inp-target').value);
+  const startDate  = new Date(document.getElementById('inp-start').value);
+  const yearsToGoal  = Math.max(0.5, (targetDate - now)   / (365.25*24*3600*1000));
+  const savingYears  = Math.max(0.5, (targetDate - startDate) / (365.25*24*3600*1000));
+
+  return {
+    monthlyKrw:  parseFloat(document.getElementById('inp-income').value)   || 6000000,
+    pensionKrw:  parseFloat(document.getElementById('inp-pension').value)  || 0,
+    existingKrw: parseFloat(document.getElementById('inp-existing').value) || 0,
+    annualReturn: parseFloat(document.getElementById('sl-return').value)   / 100,
+    inflation:    parseFloat(document.getElementById('sl-inflation').value)/ 100,
+    withdrawal:   parseFloat(document.getElementById('sl-withdrawal').value)/100,
+    yearsToGoal, savingYears, targetDate, startDate, now
+  };
+}
+
+function runCalculation() {
+  const inp = getInputs();
+
+  const incomeGap   = Math.max(0, inp.monthlyKrw - inp.pensionKrw);
+  const annualGap   = incomeGap * 12;
+  const portfolioNeeded = annualGap / inp.withdrawal;
+
+  const fvExisting  = inp.existingKrw * Math.pow(1 + inp.annualReturn, inp.savingYears);
+  const additional  = Math.max(0, portfolioNeeded - fvExisting);
+
+  const mr = inp.annualReturn / 12;
+  const n  = inp.savingYears * 12;
+  let monthlySave = 0;
+  if (n > 0 && additional > 0) {
+    monthlySave = Math.abs(mr) < 0.0001
+      ? additional / n
+      : additional * mr / (Math.pow(1 + mr, n) - 1);
+  }
+
+  const portfolioIncome = portfolioNeeded * inp.withdrawal / 12;
+  const coveragePct = Math.min(999, Math.round(((portfolioIncome + inp.pensionKrw) / inp.monthlyKrw) * 100));
+
+  const alloc  = calcAllocation(inp.savingYears);
+  const series = buildSeries(inp, monthlySave);
+
+  updateMetrics(portfolioNeeded, monthlySave, coveragePct, inp.savingYears);
+  updateTimeline(inp, portfolioNeeded, series);
+  updatePie(alloc);
+  updateLine(series, inp);
+  updateAllocTable(alloc, portfolioNeeded);
+  updateBenchmark(portfolioNeeded, inp);
+}
+
+function calcAllocation(years) {
+  if (years >= 25) return {us:55, intl:25, bonds:10, reits:8, cash:2};
+  if (years >= 15) return {us:50, intl:20, bonds:18, reits:8, cash:4};
+  if (years >= 10) return {us:45, intl:15, bonds:27, reits:8, cash:5};
+  if (years >= 5)  return {us:38, intl:12, bonds:35, reits:8, cash:7};
+  return               {us:25, intl:10, bonds:45, reits:8, cash:12};
+}
+
+function buildSeries(inp, monthlySave) {
+  const pts = [];
+  let val = inp.existingKrw;
+  const mr = inp.annualReturn / 12;
+  const months = Math.ceil(inp.savingYears * 12);
+  for (let m = 0; m <= months; m += 3) {
+    pts.push({ yr: inp.startDate.getFullYear() + m/12, val });
+    for (let i = 0; i < 3 && (m+i) < months; i++) val = val*(1+mr) + monthlySave;
+  }
+  return pts;
+}
+
+// ── UI updaters ───────────────────────────────────────────────────────────
+function setMetric(valId, eqId, krw) {
+  const d = fmtDual(krw);
+  document.getElementById(valId).textContent = d.primary;
+  document.getElementById(eqId).textContent  = d.secondary;
+}
+
+function updateMetrics(portfolioNeeded, monthlySave, coveragePct, years) {
+  setMetric('val-m1','eq-m1', portfolioNeeded);
+  setMetric('val-m2','eq-m2', monthlySave);
+  document.getElementById('val-m3').textContent = coveragePct + '%';
+  document.getElementById('eq-m3').textContent  = '';
+  document.getElementById('val-m4').textContent = years.toFixed(1) + T[lang].yearsUnit;
+  document.getElementById('eq-m4').textContent  = '';
+}
+
+function updateTimeline(inp, portfolioNeeded, series) {
+  const t = T[lang];
+  const midVal = series[Math.floor(series.length/2)]?.val || 0;
+  const midYr  = Math.round(inp.startDate.getFullYear() + inp.savingYears/2);
+  const tl = document.getElementById('timeline');
+
+  function step(label, krw, year, active) {
+    const d = fmtDual(krw);
+    return `<div class="tl-step${active?' active':''}" role="listitem">
+      <div class="tl-label">${label}</div>
+      <div class="tl-val">${d.primary}</div>
+      <div class="tl-eq">${d.secondary}</div>
+      <div class="tl-year">${year}</div>
+    </div>`;
+  }
+
+  tl.innerHTML =
+    step(t.tlToday, inp.existingKrw, inp.now.getFullYear(), true) +
+    step(t.tlMid,   midVal,          midYr,                 false) +
+    step(t.tlGoal,  portfolioNeeded, inp.targetDate.getFullYear(), false);
+}
+
+const ACOLORS = ['#1A1815','#B86A2E','#2E6B4A','#2450A4','#9C9890'];
+
+function updatePie(alloc) {
+  const vals   = [alloc.us, alloc.intl, alloc.bonds, alloc.reits, alloc.cash];
+  const names  = T[lang].allocNames;
+  const leg = document.getElementById('pie-legend');
+  leg.innerHTML = names.map((n,i) =>
+    `<div class="legend-item"><div class="legend-swatch" style="background:${ACOLORS[i]}"></div>${n} ${vals[i]}%</div>`
+  ).join('');
+
+  if (pieChart) pieChart.destroy();
+  pieChart = new Chart(document.getElementById('chart-pie'), {
+    type:'doughnut',
+    data:{ labels:names, datasets:[{
+      data:vals, backgroundColor:ACOLORS, borderWidth:2,
+      borderColor: getComputedStyle(document.body).getPropertyValue('--surface').trim()||'#fff',
+      hoverOffset:6
+    }]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}%`}} }
+    }
+  });
+}
+
+function updateLine(series, inp) {
+  const labels = series.map(p => Math.round(p.yr).toString());
+  const vals   = series.map(p => Math.round(p.val));
+
+  if (lineChart) lineChart.destroy();
+  lineChart = new Chart(document.getElementById('chart-line'), {
+    type:'line',
+    data:{ labels, datasets:[{
+      label:'KRW', data:vals,
+      borderColor:'#B86A2E', backgroundColor:'rgba(184,106,46,0.08)',
+      fill:true, tension:0.4, pointRadius:0, borderWidth:2
+    }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{
+        label: c => ' ' + fmtKrw(c.raw) + '  (' + fmtUsd(c.raw) + ')'
+      }}},
+      scales:{
+        x:{ ticks:{maxTicksLimit:6, color:'#9C9890', font:{size:11}}, grid:{display:false} },
+        y:{ ticks:{ maxTicksLimit:5, color:'#9C9890', font:{size:11},
+            callback: v => {
+              if (Math.abs(v) >= 1e8) return '₩'+(v/1e8).toFixed(0)+'억';
+              if (Math.abs(v) >= 1e4) return '₩'+Math.round(v/1e4)+'만';
+              return '₩'+v;
+            }
+          }, grid:{color:'rgba(128,128,128,0.08)'}
+        }
+      }
+    }
+  });
+}
+
+function updateAllocTable(alloc, portfolioNeeded) {
+  const vals  = [alloc.us, alloc.intl, alloc.bonds, alloc.reits, alloc.cash];
+  const names = T[lang].allocNames;
+  const roles = T[lang].allocRoles;
+  document.getElementById('alloc-body').innerHTML = vals.map((pct,i) => {
+    const krw = portfolioNeeded * pct / 100;
+    const d   = fmtDual(krw);
+    return `<tr>
+      <td><span class="alloc-dot" style="background:${ACOLORS[i]}"></span>${names[i]}</td>
+      <td style="font-weight:500">${pct}%</td>
+      <td>${d.primary} <span style="color:var(--text3);font-size:12px">${d.secondary}</span></td>
+      <td style="color:var(--text2);font-size:13px">${roles[i]}</td>
+    </tr>`;
+  }).join('');
+}
+
+const SCF = [
+  {range:'35–44', med:45000,  net:135600},
+  {range:'45–54', med:115000, net:247200},
+  {range:'55–64', med:185000, net:364500},
+  {range:'65+',   med:225000, net:409900}
+];
+
+function updateBenchmark(portfolioNeeded, inp) {
+  const t = T[lang];
+  const targetYear = inp.targetDate.getFullYear();
+  const ageAtTarget = targetYear - inp.now.getFullYear() + 40;
+  const bench = SCF.find(b => {
+    if (b.range==='65+') return ageAtTarget >= 65;
+    const [lo,hi] = b.range.split('–').map(Number);
+    return ageAtTarget >= lo && ageAtTarget <= hi;
+  }) || SCF[1];
+
+  // bench values are in USD — convert to KRW for display
+  const peerKrw = bench.med * usdKrw;
+  const netKrw  = bench.net * usdKrw;
+  const maxV = Math.max(portfolioNeeded, peerKrw, 1);
+  const youPct  = Math.min(100, Math.round(portfolioNeeded/maxV*100));
+  const peerPct = Math.min(100, Math.round(peerKrw/maxV*100));
+
+  const peerD = fmtDual(peerKrw);
+  const youD  = fmtDual(portfolioNeeded);
+
+  document.getElementById('bench-container').innerHTML = `
+    <div class="bench-item">
+      <div class="bench-row">
+        <span class="bench-name">${t.benchYou}</span>
+        <span><span class="bench-amt">${youD.primary}</span><span class="bench-eq">${youD.secondary}</span></span>
+      </div>
+      <div class="bench-bar-bg"><div class="bench-bar-fill you" style="width:${youPct}%"></div></div>
+    </div>
+    <div class="bench-item">
+      <div class="bench-row">
+        <span class="bench-name">${t.benchPeer} (${bench.range}${lang==='ko'?'세':''})</span>
+        <span><span class="bench-amt">${peerD.primary}</span><span class="bench-eq">${peerD.secondary}</span></span>
+      </div>
+      <div class="bench-bar-bg"><div class="bench-bar-fill" style="width:${peerPct}%"></div></div>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.6">
+      ${lang==='ko'
+        ? `SCF 2022 ${bench.range}세 연령대 중간값 은퇴 저축: ${peerD.primary} (${peerD.secondary}) / 순자산: ${fmtDual(netKrw).primary} (${fmtDual(netKrw).secondary})`
+        : `SCF 2022 median retirement savings age ${bench.range}: ${peerD.secondary} (${peerD.primary}) / Median net worth: ${fmtDual(netKrw).secondary} (${fmtDual(netKrw).primary})`}
+    </div>`;
+}
+
+// ── Auth ──────────────────────────────────────────────────────────────────
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  document.getElementById('el-auth-label').textContent = user ? T[lang].authOut : T[lang].authIn;
+  const prompt = document.getElementById('auth-prompt');
+  const list   = document.getElementById('plans-list');
+  if (user) { prompt.style.display='none'; list.style.display='block'; loadPlans(); }
+  else       { prompt.style.display='flex'; list.style.display='none'; }
+});
+
+function handleAuth() {
+  if (currentUser) { auth.signOut(); return; }
+  auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(console.error);
+}
+
+// ── Plans ─────────────────────────────────────────────────────────────────
+function openSaveModal() {
+  if (!currentUser) { handleAuth(); return; }
+  document.getElementById('save-modal').classList.add('open');
+  document.getElementById('plan-name-input').focus();
+}
+function closeModal() { document.getElementById('save-modal').classList.remove('open'); }
+
+async function savePlan() {
+  if (!currentUser) return;
+  const name = document.getElementById('plan-name-input').value.trim() || 'Plan';
+  const plan = {
+    name,
+    monthlyKrw:  parseFloat(document.getElementById('inp-income').value),
+    pensionKrw:  parseFloat(document.getElementById('inp-pension').value),
+    existingKrw: parseFloat(document.getElementById('inp-existing').value),
+    annualReturn: parseFloat(document.getElementById('sl-return').value),
+    inflation:    parseFloat(document.getElementById('sl-inflation').value),
+    withdrawal:   parseFloat(document.getElementById('sl-withdrawal').value),
+    targetDate:   document.getElementById('inp-target').value,
+    startDate:    document.getElementById('inp-start').value,
+    lang,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  await db.collection('users').doc(currentUser.uid).collection('plans').add(plan).catch(console.error);
+  closeModal();
+  loadPlans();
+}
+
+async function loadPlans() {
+  if (!currentUser) return;
+  const snap = await db.collection('users').doc(currentUser.uid).collection('plans')
+    .orderBy('createdAt','desc').limit(10).get();
+  savedPlans = snap.docs.map(d=>({id:d.id,...d.data()}));
+  renderPlans();
+}
+
+function renderPlans() {
+  const list = document.getElementById('plans-list');
+  if (!savedPlans.length) {
+    list.innerHTML = `<p style="font-size:13px;color:var(--text2);text-align:center;padding:16px 0">${T[lang].noPlans}</p>`;
+    return;
+  }
+  list.innerHTML = savedPlans.map(p => {
+    const d = fmtDual(p.monthlyKrw||0);
+    return `<div class="plan-item">
+      <div>
+        <div class="plan-name">${p.name}</div>
+        <div class="plan-meta">${p.targetDate||'—'} · ${d.primary}/mo</div>
+      </div>
+      <div class="plan-btns">
+        <button class="icon-btn" onclick="loadPlan('${p.id}')" title="Load">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4"/></svg>
+        </button>
+        <button class="icon-btn" onclick="deletePlan('${p.id}')" title="Delete">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadPlan(id) {
+  const p = savedPlans.find(x=>x.id===id); if (!p) return;
+  document.getElementById('inp-income').value   = p.monthlyKrw  || 6000000;
+  document.getElementById('inp-pension').value  = p.pensionKrw  || 0;
+  document.getElementById('inp-existing').value = p.existingKrw || 0;
+  document.getElementById('sl-return').value    = p.annualReturn || 7;
+  document.getElementById('sl-inflation').value = p.inflation    || 3;
+  document.getElementById('sl-withdrawal').value= p.withdrawal   || 4;
+  if (p.targetDate) document.getElementById('inp-target').value = p.targetDate;
+  if (p.startDate)  document.getElementById('inp-start').value  = p.startDate;
+  updateSliders(); runCalculation();
+}
+
+async function deletePlan(id) {
+  if (!currentUser) return;
+  await db.collection('users').doc(currentUser.uid).collection('plans').doc(id).delete();
+  loadPlans();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+function initDates() {
+  const now  = new Date();
+  const goal = new Date(now.getFullYear()+25, now.getMonth(), now.getDate());
+  document.getElementById('inp-start').value  = now.toISOString().split('T')[0];
+  document.getElementById('inp-target').value = goal.toISOString().split('T')[0];
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initDates();
+  updateSliders();
+  applyTranslations();
+  fetchRate().then(runCalculation);
+  setInterval(fetchRate, 5*60*1000);
+});
+</script>
+</body>
+</html>
