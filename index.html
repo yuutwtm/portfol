@@ -433,15 +433,14 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;hei
 
 <script>
 // ── Firebase ──────────────────────────────────────────────────────────────
-// Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyDwbULXvba1bo9FExCmoGcnLSFfIzt4IKc",
-    authDomain: "portfol-cf2b4.firebaseapp.com",
-    projectId: "portfol-cf2b4",
-    storageBucket: "portfol-cf2b4.firebasestorage.app",
-    messagingSenderId: "657076451304",
-    appId: "1:657076451304:web:a489cd360cc7915d0fd65d"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyDwbULXvba1bo9FExCmoGcnLSFfIzt4IKc",
+  authDomain: "portfol-cf2b4.firebaseapp.com",
+  projectId: "portfol-cf2b4",
+  storageBucket: "portfol-cf2b4.firebasestorage.app",
+  messagingSenderId: "657076451304",
+  appId: "1:657076451304:web:a489cd360cc7915d0fd65d"
+};
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
@@ -718,15 +717,7 @@ function updateMetrics(portfolioNeeded, monthlySave, coveragePct, years) {
 }
 
 function updateTimeline(inp, portfolioNeeded, series) {
-  // auto-select holdings cohort based on age at target
-  const nowYear = inp.now.getFullYear();
-  const targetYear = inp.targetDate.getFullYear();
-  const ageAtTarget = targetYear - nowYear + 35; // assume ~35 now
-  let cohort = '30s';
-  if (ageAtTarget >= 60) cohort = '60s';
-  else if (ageAtTarget >= 50) cohort = '50s';
-  else if (ageAtTarget >= 40) cohort = '40s';
-  if (cohort !== activeHoldingsTab) showHoldings(cohort);
+  // cohort auto-selection now handled by syncHoldingsToIncome via updateBenchmark
   const t = T[lang];
   const midVal = series[Math.floor(series.length/2)]?.val || 0;
   const midYr  = Math.round(inp.startDate.getFullYear() + inp.savingYears/2);
@@ -819,53 +810,146 @@ function updateAllocTable(alloc, portfolioNeeded) {
   }).join('');
 }
 
-const SCF = [
-  {range:'35–44', med:45000,  net:135600},
-  {range:'45–54', med:115000, net:247200},
-  {range:'55–64', med:185000, net:364500},
-  {range:'65+',   med:225000, net:409900}
+// SCF 2022 — keyed by income quintile (annual USD) × age cohort
+// med = median retirement savings, net = median net worth, pct = % owning retirement account
+const SCF_TIERS = [
+  // bottom 20% (<$28k/yr)
+  { tier:'bottom20', annualUsdMax:28000,
+    label:{ en:'Bottom 20% income (<$28K/yr)', ko:'소득 하위 20% (<$28K/년)' },
+    cohorts:{
+      '35-44':{ med:4000,   net:11800  },
+      '45-54':{ med:7500,   net:22000  },
+      '55-64':{ med:12000,  net:31500  },
+      '65+':  { med:14000,  net:38000  }
+    }
+  },
+  // lower-middle 20–40% ($28k–$52k)
+  { tier:'lower40', annualUsdMax:52000,
+    label:{ en:'Lower-middle 20–40% ($28–52K/yr)', ko:'중하위 20–40% ($28–52K/년)' },
+    cohorts:{
+      '35-44':{ med:18000,  net:55000  },
+      '45-54':{ med:42000,  net:105000 },
+      '55-64':{ med:68000,  net:152000 },
+      '65+':  { med:82000,  net:178000 }
+    }
+  },
+  // middle 40–60% ($52k–$90k)
+  { tier:'middle', annualUsdMax:90000,
+    label:{ en:'Middle 40–60% ($52–90K/yr)', ko:'중간 40–60% ($52–90K/년)' },
+    cohorts:{
+      '35-44':{ med:45000,  net:135600 },
+      '45-54':{ med:115000, net:247200 },
+      '55-64':{ med:185000, net:364500 },
+      '65+':  { med:225000, net:409900 }
+    }
+  },
+  // upper-middle 60–80% ($90k–$150k)
+  { tier:'upper60', annualUsdMax:150000,
+    label:{ en:'Upper-middle 60–80% ($90–150K/yr)', ko:'중상위 60–80% ($90–150K/년)' },
+    cohorts:{
+      '35-44':{ med:95000,  net:310000  },
+      '45-54':{ med:244000, net:620000  },
+      '55-64':{ med:390000, net:990000  },
+      '65+':  { med:470000, net:1180000 }
+    }
+  },
+  // top 20% (>$150k)
+  { tier:'top20', annualUsdMax:Infinity,
+    label:{ en:'Top 20% income (>$150K/yr)', ko:'소득 상위 20% (>$150K/년)' },
+    cohorts:{
+      '35-44':{ med:210000,  net:800000  },
+      '45-54':{ med:530000,  net:1900000 },
+      '55-64':{ med:860000,  net:3100000 },
+      '65+':  { med:1050000, net:3800000 }
+    }
+  }
 ];
+
+// also: holdings strategy differs by income tier
+const INCOME_TIER_HOLDINGS = {
+  bottom20: {
+    ko: '이 소득 구간의 미국인은 주로 직장 401(k) 매칭 위주로 저축하며, 저비용 타겟데이트펀드나 머니마켓펀드에 집중합니다. 개별 주식 직접 보유 비율은 낮습니다.',
+    en: 'In this income tier, Americans primarily save through employer 401(k) matches, concentrating in low-cost target-date or money market funds. Direct stock ownership is rare.'
+  },
+  lower40: {
+    ko: '중하위 소득 구간은 인덱스 펀드 중심의 401(k)와 소규모 IRA를 병행합니다. S&P500 인덱스 펀드와 TDF가 가장 일반적입니다.',
+    en: 'Lower-middle earners use index-heavy 401(k)s alongside small IRAs. S&P 500 index funds and TDFs are the most common holdings.'
+  },
+  middle: {
+    ko: '중간 소득 구간은 인덱스 ETF와 TDF를 함께 사용하고, 일부는 개별 주식(AAPL, MSFT 등)을 직접 보유하기 시작합니다. 채권 비중이 점차 높아집니다.',
+    en: 'Middle-income households mix index ETFs with TDFs, and some begin holding individual stocks (AAPL, MSFT). Bond allocations rise with age.'
+  },
+  upper60: {
+    ko: '중상위 소득 구간은 401(k)·IRA 외 일반 증권계좌도 적극 활용합니다. 배당 ETF(SCHD, VYM), 국제 분산(VXUS), 리츠가 포트폴리오에 추가됩니다.',
+    en: 'Upper-middle earners actively use taxable brokerage accounts alongside retirement accounts. Dividend ETFs (SCHD, VYM), international diversification (VXUS), and REITs appear more frequently.'
+  },
+  top20: {
+    ko: '상위 20% 소득 구간은 개별 주식 직접 투자, 대안 투자(사모펀드, 헤지펀드), 부동산이 포트폴리오에 큰 비중을 차지합니다. 세금 효율 전략(tax-loss harvesting, municipal bond 등)이 중요해집니다.',
+    en: 'Top earners hold significant direct stock positions, alternative investments (private equity, hedge funds), and real estate. Tax-efficiency strategies (tax-loss harvesting, muni bonds) become prominent.'
+  }
+};
+
+function getIncomeTier(monthlyKrw) {
+  const annualUsd = (monthlyKrw * 12) / usdKrw;
+  return SCF_TIERS.find(t => annualUsd <= t.annualUsdMax) || SCF_TIERS[SCF_TIERS.length-1];
+}
+
+function getAgeCohortKey(inp) {
+  const ageAtTarget = inp.targetDate.getFullYear() - inp.now.getFullYear() + 35;
+  if (ageAtTarget >= 65) return '65+';
+  if (ageAtTarget >= 55) return '55-64';
+  if (ageAtTarget >= 45) return '45-54';
+  return '35-44';
+}
 
 function updateBenchmark(portfolioNeeded, inp) {
   const t = T[lang];
-  const targetYear = inp.targetDate.getFullYear();
-  const ageAtTarget = targetYear - inp.now.getFullYear() + 40;
-  const bench = SCF.find(b => {
-    if (b.range==='65+') return ageAtTarget >= 65;
-    const [lo,hi] = b.range.split('–').map(Number);
-    return ageAtTarget >= lo && ageAtTarget <= hi;
-  }) || SCF[1];
+  const tier = getIncomeTier(inp.monthlyKrw);
+  const cohortKey = getAgeCohortKey(inp);
+  const cohort = tier.cohorts[cohortKey] || tier.cohorts['45-54'];
 
-  // bench values are in USD — convert to KRW for display
-  const peerKrw = bench.med * usdKrw;
-  const netKrw  = bench.net * usdKrw;
-  const maxV = Math.max(portfolioNeeded, peerKrw, 1);
+  const peerKrw = cohort.med * usdKrw;
+  const netKrw  = cohort.net * usdKrw;
+  const maxV    = Math.max(portfolioNeeded, peerKrw, 1);
   const youPct  = Math.min(100, Math.round(portfolioNeeded/maxV*100));
   const peerPct = Math.min(100, Math.round(peerKrw/maxV*100));
 
   const peerD = fmtDual(peerKrw);
   const youD  = fmtDual(portfolioNeeded);
+  const tierLabel = tier.label[lang] || tier.label.en;
+  const annualUsd = Math.round((inp.monthlyKrw * 12) / usdKrw);
+  const annualKrw = inp.monthlyKrw * 12;
+
+  const incomeNote = lang === 'ko'
+    ? `목표 소득 ${fmtKrw(inp.monthlyKrw)}/월 → 연 ${fmtKrw(annualKrw)} (≈$${annualUsd.toLocaleString()}) 기준 소득 구간: <strong>${tierLabel}</strong>`
+    : `Target income ${fmtUsd(inp.monthlyKrw)}/mo → annual ≈$${annualUsd.toLocaleString()} — income tier: <strong>${tierLabel}</strong>`;
 
   document.getElementById('bench-container').innerHTML = `
+    <div style="font-size:12px;color:var(--text2);background:var(--surface2);border-radius:10px;padding:10px 14px;margin-bottom:16px;border:0.5px solid var(--border);line-height:1.6">
+      ${incomeNote}
+    </div>
     <div class="bench-item">
       <div class="bench-row">
         <span class="bench-name">${t.benchYou}</span>
-        <span><span class="bench-amt">${youD.primary}</span><span class="bench-eq">${youD.secondary}</span></span>
+        <span><span class="bench-amt">${youD.primary}</span><span class="bench-eq"> ${youD.secondary}</span></span>
       </div>
       <div class="bench-bar-bg"><div class="bench-bar-fill you" style="width:${youPct}%"></div></div>
     </div>
     <div class="bench-item">
       <div class="bench-row">
-        <span class="bench-name">${t.benchPeer} (${bench.range}${lang==='ko'?'세':''})</span>
-        <span><span class="bench-amt">${peerD.primary}</span><span class="bench-eq">${peerD.secondary}</span></span>
+        <span class="bench-name">${t.benchPeer} · ${cohortKey}${lang==='ko'?'세':''}</span>
+        <span><span class="bench-amt">${peerD.primary}</span><span class="bench-eq"> ${peerD.secondary}</span></span>
       </div>
       <div class="bench-bar-bg"><div class="bench-bar-fill" style="width:${peerPct}%"></div></div>
     </div>
     <div style="font-size:12px;color:var(--text2);margin-top:12px;line-height:1.6">
       ${lang==='ko'
-        ? `SCF 2022 ${bench.range}세 연령대 중간값 은퇴 저축: ${peerD.primary} (${peerD.secondary}) / 순자산: ${fmtDual(netKrw).primary} (${fmtDual(netKrw).secondary})`
-        : `SCF 2022 median retirement savings age ${bench.range}: ${peerD.secondary} (${peerD.primary}) / Median net worth: ${fmtDual(netKrw).secondary} (${fmtDual(netKrw).primary})`}
+        ? `동일 소득 구간·연령대 중간값 — 은퇴 저축: ${peerD.primary} (${peerD.secondary}) / 순자산: ${fmtDual(netKrw).primary} (${fmtDual(netKrw).secondary})`
+        : `Same-tier peer median — retirement savings: ${peerD.secondary} (${peerD.primary}) / net worth: ${fmtDual(netKrw).secondary} (${fmtDual(netKrw).primary})`}
     </div>`;
+
+  // sync holdings panel to this tier + cohort
+  syncHoldingsToIncome(tier.tier, cohortKey);
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────
@@ -1116,47 +1200,75 @@ const HOLDINGS = {
 };
 
 let activeHoldingsTab = '30s';
+let activeIncomeTier  = 'middle';
 
 function showHoldings(cohort) {
   activeHoldingsTab = cohort;
   ['30s','40s','50s','60s'].forEach(c => {
-    const id = c === '60s' ? 'htab-60s' : 'htab-'+c;
-    const el = document.getElementById(id);
+    const el = document.getElementById('htab-' + c);
     if (el) el.classList.toggle('active', c === cohort);
   });
-  renderHoldings(cohort);
+  renderHoldings(cohort, activeIncomeTier);
 }
 
-function renderHoldings(cohort) {
+function syncHoldingsToIncome(tierKey, cohortKey) {
+  // map SCF cohort key ('35-44' etc) → holdings tab key ('30s' etc)
+  const cohortMap = {'35-44':'30s','45-54':'40s','55-64':'50s','65+':'60s'};
+  const tab = cohortMap[cohortKey] || '40s';
+  activeIncomeTier  = tierKey;
+  activeHoldingsTab = tab;
+  ['30s','40s','50s','60s'].forEach(c => {
+    const el = document.getElementById('htab-' + c);
+    if (el) el.classList.toggle('active', c === tab);
+  });
+  renderHoldings(tab, tierKey);
+}
+
+function renderHoldings(cohort, tierKey) {
   const data = HOLDINGS[cohort];
   if (!data) return;
   const panel = document.getElementById('holdings-panel');
-  const ctx = data.context[lang] || data.context.en;
 
-  let html = `<div class="holdings-context">${ctx}</div>`;
-  html += '<div class="holdings-grid">';
+  // age cohort context
+  const ageCtx = data.context[lang] || data.context.en;
 
+  // income-tier specific note
+  const tierNote = tierKey && INCOME_TIER_HOLDINGS[tierKey]
+    ? (INCOME_TIER_HOLDINGS[tierKey][lang] || INCOME_TIER_HOLDINGS[tierKey].en)
+    : '';
+
+  let h = '';
+
+  // Combined context block: age + income tier
+  if (tierNote) {
+    h += `<div class="holdings-context" style="margin-bottom:10px">${ageCtx}</div>`;
+    h += `<div class="holdings-context" style="margin-bottom:16px;border-color:var(--accent-warm);background:var(--surface2)">${
+      lang === 'ko' ? '<strong>소득 구간 특성:</strong> ' : '<strong>Your income tier:</strong> '
+    }${tierNote}</div>`;
+  } else {
+    h += `<div class="holdings-context">${ageCtx}</div>`;
+  }
+
+  h += '<div class="holdings-grid">';
   data.categories.forEach(cat => {
     const catName = cat.name[lang] || cat.name.en;
-    html += `<div class="holdings-cat">
-      <div class="holdings-cat-title">${catName}</div>`;
-    cat.holdings.forEach(h => {
-      html += `<div class="holding-row">
+    h += `<div class="holdings-cat"><div class="holdings-cat-title">${catName}</div>`;
+    cat.holdings.forEach(item => {
+      h += `<div class="holding-row">
         <div class="holding-left">
-          <span class="holding-ticker">${h.ticker}</span>
-          <span class="holding-name">${h.name}</span>
+          <span class="holding-ticker">${item.ticker}</span>
+          <span class="holding-name">${item.name}</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-          <span class="holding-tag tag-${h.tag}">${h.tag.toUpperCase()}</span>
-          <span class="holding-pct">${h.pct}</span>
+          <span class="holding-tag tag-${item.tag}">${item.tag.toUpperCase()}</span>
+          <span class="holding-pct">${item.pct}</span>
         </div>
       </div>`;
     });
-    html += '</div>';
+    h += '</div>';
   });
-
-  html += '</div>';
-  panel.innerHTML = html;
+  h += '</div>';
+  panel.innerHTML = h;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
@@ -1173,7 +1285,7 @@ window.addEventListener('DOMContentLoaded', () => {
   applyTranslations();
   fetchRate().then(runCalculation);
   setInterval(fetchRate, 5*60*1000);
-  showHoldings('30s');
+  renderHoldings('30s', 'middle');
 });
 </script>
 </body>
