@@ -39,13 +39,13 @@ body.en{font-family:var(--sans)}
 
 /* topbar */
 .topbar{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:0.5px solid var(--border);padding:0 28px;height:66px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow-sm)}
-.topbar-left{display:flex;align-items:center;gap:16px}
+.topbar-left{display:flex;align-items:center;gap:12px}
 .logo{font-family:var(--serif);font-size:26px}
 .lang-toggle{display:flex;align-items:center;background:var(--surface2);border-radius:var(--pill-r);border:0.5px solid var(--border);padding:3px;gap:2px}
-.lang-btn{font-size:14px;font-weight:500;padding:7px 18px;border-radius:var(--pill-r);border:none;background:transparent;color:var(--text2);cursor:pointer;transition:background .15s,color .15s;font-family:inherit}
-.lang-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.topbar-right{display:flex;align-items:center;gap:12px}
-.rate-pill{font-size:13px;color:var(--text2);background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--pill-r);padding:7px 16px;display:flex;align-items:center;gap:7px}
+.lang-btn{font-size:18px;padding:5px 10px;border-radius:var(--pill-r);border:none;background:transparent;cursor:pointer;transition:background .15s,opacity .15s;font-family:inherit;opacity:0.5;line-height:1}
+.lang-btn.active{background:var(--surface);opacity:1;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.rate-pill{font-size:14px;font-weight:600;color:var(--text2);background:var(--surface2);border:0.5px solid var(--border);border-radius:var(--pill-r);padding:7px 14px;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .rate-dot{width:6px;height:6px;border-radius:50%;background:var(--accent-green);flex-shrink:0}
 .btn-pill{font-size:15px;font-weight:500;padding:11px 22px;border-radius:var(--pill-r);border:0.5px solid var(--border-strong);background:transparent;color:var(--text);cursor:pointer;transition:background .15s,transform .1s;display:flex;align-items:center;gap:7px;white-space:nowrap;font-family:inherit}
 .btn-pill:hover{background:var(--surface2)}
@@ -210,14 +210,14 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;hei
   <div class="topbar-left">
     <div class="logo" id="el-logo">Portfol</div>
     <div class="lang-toggle" role="group" aria-label="Language">
-      <button class="lang-btn" id="btn-ko" onclick="setLang('ko')">한국어</button>
-      <button class="lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
+      <button class="lang-btn" id="btn-ko" onclick="setLang('ko')" title="한국어">🇰🇷</button>
+      <button class="lang-btn" id="btn-en" onclick="setLang('en')" title="English">🇬🇧</button>
     </div>
   </div>
   <div class="topbar-right">
     <div class="rate-pill">
       <span class="rate-dot"></span>
-      <span id="el-rate">USD/KRW —</span>
+      <span id="el-rate">₩—</span>
     </div>
     <button class="btn-pill" id="auth-btn" onclick="handleAuth()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
@@ -622,10 +622,10 @@ async function fetchRate() {
     const d = await r.json();
     if (d?.rates?.KRW) {
       usdKrw = d.rates.KRW;
-      document.getElementById('el-rate').textContent = `1 USD = ₩${Math.round(usdKrw).toLocaleString()}`;
+      document.getElementById('el-rate').textContent = '₩' + Math.round(usdKrw).toLocaleString();
     }
   } catch {
-    document.getElementById('el-rate').textContent = `1 USD ≈ ₩${Math.round(usdKrw).toLocaleString()}`;
+    document.getElementById('el-rate').textContent = '₩' + Math.round(usdKrw).toLocaleString();
   }
 }
 
