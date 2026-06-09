@@ -248,9 +248,24 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;hei
             <label id="el-lbl-income">월 목표 소득</label>
             <div class="currency-input">
               <span class="cur-prefix">₩</span>
-              <input type="number" id="inp-income" inputmode="numeric" value="6000000" min="100000" max="500000000" step="100000" oninput="debounceCalc()">
+              <input type="number" id="inp-income" inputmode="numeric" value="6000000" min="100000" max="500000000" step="100000" oninput="onIncomeInput()">
             </div>
             <div class="hint" id="el-hint-income">투자 소득 + 배당금 포함</div>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin:-8px 0 16px;opacity:0.4">
+            <div style="flex:1;height:0.5px;background:var(--border)"></div>
+            <span style="font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase" id="el-or">↕ 연동</span>
+            <div style="flex:1;height:0.5px;background:var(--border)"></div>
+          </div>
+
+          <div class="field">
+            <label id="el-lbl-ptarget">목표 포트폴리오 규모</label>
+            <div class="currency-input">
+              <span class="cur-prefix">₩</span>
+              <input type="number" id="inp-ptarget" inputmode="numeric" value="1800000000" min="0" step="10000000" oninput="onPortfolioInput()">
+            </div>
+            <div class="hint" id="el-hint-ptarget">소득 목표와 자동 연동 — 직접 수정하면 소득도 업데이트됩니다</div>
           </div>
 
           <div class="field-row">
@@ -288,7 +303,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;hei
               <span class="sl-name" id="el-lbl-return">연 예상 수익률</span>
               <span class="sl-val" id="val-return">7.0%</span>
             </div>
-            <input type="range" id="sl-return" min="2" max="14" value="7" step="0.5" oninput="updateSliders();debounceCalc()">
+            <input type="range" id="sl-return" min="2" max="14" value="7" step="0.5" oninput="onWithdrawalChange()">
           </div>
 
           <div class="slider-field">
@@ -296,7 +311,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;hei
               <span class="sl-name" id="el-lbl-inflation">인플레이션 가정</span>
               <span class="sl-val" id="val-inflation">3.0%</span>
             </div>
-            <input type="range" id="sl-inflation" min="1" max="8" value="3" step="0.5" oninput="updateSliders();debounceCalc()">
+            <input type="range" id="sl-inflation" min="1" max="8" value="3" step="0.5" oninput="onWithdrawalChange()">
           </div>
 
           <div class="slider-field">
@@ -304,7 +319,7 @@ input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;hei
               <span class="sl-name" id="el-lbl-withdrawal">인출률</span>
               <span class="sl-val" id="val-withdrawal">4.00%</span>
             </div>
-            <input type="range" id="sl-withdrawal" min="2" max="8" value="4" step="0.25" oninput="updateSliders();debounceCalc()">
+            <input type="range" id="sl-withdrawal" min="2" max="8" value="4" step="0.25" oninput="onWithdrawalChange()">
             <div class="hint" id="el-hint-withdrawal">"4% 규칙" — 30년 은퇴의 역사적 안전 인출률</div>
           </div>
 
@@ -473,6 +488,7 @@ const T = {
     heroP:'목표 은퇴 소득을 입력하면, 현재 필요한 포트폴리오를 미국 실제 가계 데이터와 비교해 계산합니다.',
     lblGoal:'목표 설정', lblIncome:'월 목표 소득', hintIncome:'투자 소득 + 배당금 포함',
     lblTarget:'목표 날짜', lblStart:'시작 날짜',
+    lblPtarget:'목표 포트폴리오 규모', hintPtarget:'소득 목표와 자동 연동 — 직접 수정하면 소득도 업데이트됩니다', elOr:'↕ 연동',
     lblPension:'예상 연금 (월)', hintPension:'국민연금, 사회보장 등',
     lblExisting:'현재 포트폴리오 가치',
     lblReturn:'연 예상 수익률', lblInflation:'인플레이션 가정', lblWithdrawal:'인출률',
@@ -503,6 +519,7 @@ const T = {
     heroP:'Enter your target retirement income. We calculate what portfolio you need — benchmarked against real American household data.',
     lblGoal:'Target Goal', lblIncome:'Monthly income target', hintIncome:'Includes investment income + dividends',
     lblTarget:'Target date', lblStart:'Plan start date',
+    lblPtarget:'Target portfolio size', hintPtarget:'Linked to income goal — edit either to update both', elOr:'↕ linked',
     lblPension:'Expected pension / month', hintPension:'Social Security, 국민연금, etc.',
     lblExisting:'Existing portfolio value',
     lblReturn:'Expected annual return', lblInflation:'Inflation assumption', lblWithdrawal:'Withdrawal rate',
@@ -541,6 +558,7 @@ function applyTranslations() {
     'el-logo':t.logo, 'el-hero-h1':t.heroH1, 'el-hero-p':t.heroP,
     'el-lbl-goal':t.lblGoal, 'el-lbl-income':t.lblIncome, 'el-hint-income':t.hintIncome,
     'el-lbl-target':t.lblTarget, 'el-lbl-start':t.lblStart,
+    'el-lbl-ptarget':t.lblPtarget, 'el-hint-ptarget':t.hintPtarget, 'el-or':t.elOr,
     'el-lbl-pension':t.lblPension, 'el-hint-pension':t.hintPension,
     'el-lbl-existing':t.lblExisting,
     'el-lbl-return':t.lblReturn, 'el-lbl-inflation':t.lblInflation, 'el-lbl-withdrawal':t.lblWithdrawal,
@@ -646,6 +664,45 @@ function updateSliders() {
 function debounceCalc() {
   clearTimeout(calcTimer);
   calcTimer = setTimeout(runCalculation, 200);
+}
+
+// ── Income ↔ Portfolio sync ──────────────────────────────────────────────
+let lastEditedField = 'income'; // track which field the user last touched
+
+function onIncomeInput() {
+  lastEditedField = 'income';
+  // derive portfolio from income
+  const income  = parseFloat(document.getElementById('inp-income').value) || 0;
+  const pension = parseFloat(document.getElementById('inp-pension').value) || 0;
+  const wd      = parseFloat(document.getElementById('sl-withdrawal').value) / 100 || 0.04;
+  const gap     = Math.max(0, income - pension);
+  const portfolio = gap * 12 / wd;
+  const ptEl = document.getElementById('inp-ptarget');
+  if (ptEl) ptEl.value = Math.round(portfolio);
+  debounceCalc();
+}
+
+function onPortfolioInput() {
+  lastEditedField = 'portfolio';
+  // derive income from portfolio
+  const portfolio = parseFloat(document.getElementById('inp-ptarget').value) || 0;
+  const pension   = parseFloat(document.getElementById('inp-pension').value) || 0;
+  const wd        = parseFloat(document.getElementById('sl-withdrawal').value) / 100 || 0.04;
+  const monthlyFromPortfolio = (portfolio * wd) / 12;
+  const income = monthlyFromPortfolio + pension;
+  const incEl = document.getElementById('inp-income');
+  if (incEl) incEl.value = Math.round(income);
+  debounceCalc();
+}
+
+// Also sync when withdrawal rate slider changes
+function onWithdrawalChange() {
+  updateSliders();
+  if (lastEditedField === 'portfolio') {
+    onPortfolioInput();
+  } else {
+    onIncomeInput();
+  }
 }
 
 // ── Core calc ─────────────────────────────────────────────────────────────
@@ -1304,7 +1361,7 @@ window.addEventListener('DOMContentLoaded', () => {
   initDates();
   updateSliders();
   applyTranslations();
-  fetchRate().then(runCalculation);
+  fetchRate().then(() => { onIncomeInput(); runCalculation(); });
   setInterval(fetchRate, 5*60*1000);
   renderHoldings('30s', 'middle');
 });
